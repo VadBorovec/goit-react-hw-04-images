@@ -20,7 +20,8 @@ const App = () => {
   const [tagImage, setTagImage] = useState(null);
   const [isLoading, setIsLoading] = useState(false);
   const [isScroll, setIsScroll] = useState(false);
-  const [isError, setIsError] = useState('');
+  const [isSubmit, setIsSubmit] = useState(false);
+  const [isError, setIsError] = useState(false);
   const [showModal, setShowModal] = useState(false);
   const [showBtn, setShowBtn] = useState(false);
 
@@ -57,10 +58,10 @@ const App = () => {
   }, [query, page]);
 
   useEffect(() => {
-    if (isScroll) {
+    if (isScroll && isSubmit) {
       pageScroll();
     }
-  }, [isScroll]);
+  }, [isScroll, isSubmit]);
 
   const handleSubmit = newQuery => {
     if (newQuery === query) {
@@ -72,8 +73,8 @@ const App = () => {
     setPage(1);
     setImages([]);
     setIsLoading(false);
-    setIsScroll(false);
-    setIsError('');
+    setIsSubmit(false);
+    setIsError(false);
     setShowModal(false);
     setShowBtn(false);
   };
@@ -90,6 +91,7 @@ const App = () => {
 
   const handleLoadMore = () => {
     setPage(prevPage => prevPage + 1);
+    setIsSubmit(true);
   };
 
   const pageScroll = () => {
