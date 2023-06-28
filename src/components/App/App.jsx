@@ -20,41 +20,41 @@ const App = () => {
   const [tagImage, setTagImage] = useState(null);
   const [isLoading, setIsLoading] = useState(false);
   const [isScroll, setIsScroll] = useState(false);
-  const [isError, setIsError] = useState(false);
+  const [isError, setIsError] = useState('');
   const [showModal, setShowModal] = useState(false);
   const [showBtn, setShowBtn] = useState(false);
 
-  useEffect(
-    prevState => {
-      const prevSearch = prevState.query;
-      const prevPage = prevState.page;
+  useEffect(() => {
+    if (!query) return;
 
-      if (prevSearch !== query || prevPage !== page) {
-        setIsLoading(true);
-        setIsScroll(false);
+    const fetchData = async () => {
+      setIsLoading(true);
+      setIsScroll(false);
 
-        try {
-          const response = fetchImages(query, page);
-          const { hits, totalHits } = response;
-          if (totalHits === 0) {
-            Notiflix.Notify.failure(
-              'Sorry, there are no images matching your search query. Please try again.'
-            );
-            return;
-          }
-          Notiflix.Notify.success(`Hooray! We found ${totalHits} images.`);
-          setImages(prevImages => [...prevImages, ...hits]);
-          setShowBtn(page < Math.ceil(totalHits / 12));
-        } catch (error) {
-          setIsError(error.message);
-        } finally {
-          setIsLoading(false);
-          setIsScroll(true);
+      try {
+        const response = await fetchImages(query, page);
+        const { hits, totalHits } = response;
+
+        if (!totalHits) {
+          Notiflix.Notify.failure(
+            'Sorry, there are no images matching your search query. Please try again.'
+          );
+          return setIsError('No matches found');
         }
+
+        Notiflix.Notify.success(`Hooray! We found ${totalHits} images.`);
+        setImages(prevImages => [...prevImages, ...hits]);
+        setShowBtn(page < Math.ceil(totalHits / 12));
+      } catch (error) {
+        setIsError(error.message);
+      } finally {
+        setIsLoading(false);
+        setIsScroll(true);
       }
-    },
-    [query, page]
-  );
+    };
+
+    fetchData();
+  }, [query, page]);
 
   useEffect(() => {
     if (isScroll) {
@@ -73,7 +73,7 @@ const App = () => {
     setImages([]);
     setIsLoading(false);
     setIsScroll(false);
-    setIsError(false);
+    setIsError('');
     setShowModal(false);
     setShowBtn(false);
   };
