@@ -1,4 +1,4 @@
-import { Component } from 'react';
+import { useState, useEffect } from 'react';
 import Notiflix from 'notiflix';
 
 import Searchbar from '../Searchbar';
@@ -10,92 +10,89 @@ import Error from '../Error';
 
 import fetchImages from '../../services';
 
-class App extends Component {
-  state = {
-    images: [],
-    page: 1,
-    query: '',
-    largeImageURL: null,
-    tagImage: null,
-    isLoading: false,
-    isScroll: false,
-    isError: false,
-    showModal: false,
-    showBtn: false,
-  };
+// !======functional component
 
-  async componentDidUpdate(_, prevState) {
-    const prevSearch = prevState.query;
-    const prevPage = prevState.page;
-    const { query, page } = this.state;
+const App = () => {
+  const [images, setImages] = useState([]);
+  const [page, setPage] = useState(1);
+  const [query, setQuery] = useState('');
+  const [largeImageURL, setLargeImageURL] = useState(null);
+  const [tagImage, setTagImage] = useState(null);
+  const [isLoading, setIsLoading] = useState(false);
+  const [isScroll, setIsScroll] = useState(false);
+  const [isError, setIsError] = useState(false);
+  const [showModal, setShowModal] = useState(false);
+  const [showBtn, setShowBtn] = useState(false);
 
-    if (prevSearch !== query || prevPage !== page) {
-      this.setState({ isLoading: true, isScroll: false });
+  useEffect(
+    prevState => {
+      const prevSearch = prevState.query;
+      const prevPage = prevState.page;
 
-      try {
-        const response = await fetchImages(query, page);
-        const { hits, totalHits } = response;
-        if (totalHits === 0) {
-          Notiflix.Notify.failure(
-            'Sorry, there are no images matching your search query. Please try again.'
-          );
-          return;
+      if (prevSearch !== query || prevPage !== page) {
+        setIsLoading(true);
+        setIsScroll(false);
+
+        try {
+          const response = fetchImages(query, page);
+          const { hits, totalHits } = response;
+          if (totalHits === 0) {
+            Notiflix.Notify.failure(
+              'Sorry, there are no images matching your search query. Please try again.'
+            );
+            return;
+          }
+          Notiflix.Notify.success(`Hooray! We found ${totalHits} images.`);
+          setImages(prevImages => [...prevImages, ...hits]);
+          setShowBtn(page < Math.ceil(totalHits / 12));
+        } catch (error) {
+          setIsError(error.message);
+        } finally {
+          setIsLoading(false);
+          setIsScroll(true);
         }
-        Notiflix.Notify.success(`Hooray! We found ${totalHits} images.`);
-
-        this.setState(prevState => ({
-          images: [...prevState.images, ...hits],
-          showBtn: page < Math.ceil(totalHits / 12),
-        }));
-      } catch (error) {
-        this.setState({ isError: error.message });
-      } finally {
-        this.setState({ isLoading: false, isScroll: true });
       }
-    }
+    },
+    [query, page]
+  );
 
-    if (this.state.isScroll) {
-      this.pageScroll();
+  useEffect(() => {
+    if (isScroll) {
+      pageScroll();
     }
-  }
+  }, [isScroll]);
 
-  handleSubmit = query => {
-    if (query === '') {
-      Notiflix.Notify.failure('Please enter a search query.');
-    } else if (query === this.state.query) {
+  const handleSubmit = newQuery => {
+    if (newQuery === query) {
       Notiflix.Notify.info(`${query} have already been displayed.`);
       return;
     }
 
-    this.setState({
-      query,
-      page: 1,
-      images: [],
-      isLoading: false,
-      isScroll: false,
-      isError: false,
-      showModal: false,
-      showBtn: false,
-    });
+    setQuery(newQuery);
+    setPage(1);
+    setImages([]);
+    setIsLoading(false);
+    setIsScroll(false);
+    setIsError(false);
+    setShowModal(false);
+    setShowBtn(false);
   };
 
-  handleOpenModal = (largeImageURL, tagImage) => {
-    this.setState({
-      largeImageURL: largeImageURL,
-      tagImage: tagImage,
-      showModal: true,
-    });
+  const handleOpenModal = (imageURL, tag) => {
+    setLargeImageURL(imageURL);
+    setTagImage(tag);
+    setShowModal(true);
   };
 
-  handleCloseModal = () => {
-    this.setState({ showModal: false });
+  const handleCloseModal = () => {
+    setShowModal(false);
   };
 
-  handleLoadMore = () => {
-    this.setState(prevState => ({ page: prevState.page + 1 }));
+  const handleLoadMore = () => {
+    setPage(prevPage => prevPage + 1);
   };
 
-  pageScroll = () => {
+  const pageScroll = () => {
     const { height: cardHeight } = document
       .querySelector('.ImageGallery')
       .firstElementChild.getBoundingClientRect();
@@ -106,34 +103,150 @@ class App extends Component {
     });
   };
 
-  render() {
-    const {
-      images,
-      largeImageURL,
-      tagImage,
-      isLoading,
-      isError,
-      showModal,
-      showBtn,
-    } = this.state;
+  return (
+    <div className="App">
+      <Searchbar onSubmit={handleSubmit} />
+      {isError && <Error error={` ${isError}. Please try again.`} />}
+      <ImageGallery images={images} handleOpenModal={handleOpenModal} />
+      {isLoading && <Loader />}
+      {showBtn && <Button onClick={handleLoadMore}></Button>}
+      {showModal && (
+        <Modal
+          onClose={handleCloseModal}
+          largeImageURL={largeImageURL}
+          tagImage={tagImage}
+        />
+      )}
+    </div>
+  );
+};
 
-    return (
-      <div className="App">
-        <Searchbar onSubmit={this.handleSubmit} />
-        {isError && <Error error={` ${isError}. Please try again.`} />}
-        <ImageGallery images={images} handleOpenModal={this.handleOpenModal} />
-        {isLoading && <Loader />}
-        {showBtn && <Button onClick={this.handleLoadMore}></Button>}
-        {showModal && (
-          <Modal
-            onClose={this.handleCloseModal}
-            largeImageURL={largeImageURL}
-            tagImage={tagImage}
-          />
-        )}
-      </div>
-    );
-  }
-}
+// !======class
+
+// class App extends Component {
+//   state = {
+//     images: [],
+//     page: 1,
+//     query: '',
+//     largeImageURL: null,
+//     tagImage: null,
+//     isLoading: false,
+//     isScroll: false,
+//     isError: false,
+//     showModal: false,
+//     showBtn: false,
+//   };
+
+//   async componentDidUpdate(_, prevState) {
+//     const prevSearch = prevState.query;
+//     const prevPage = prevState.page;
+//     const { query, page } = this.state;
+
+//     if (prevSearch !== query || prevPage !== page) {
+//       this.setState({ isLoading: true, isScroll: false });
+
+//       try {
+//         const response = await fetchImages(query, page);
+//         const { hits, totalHits } = response;
+//         if (totalHits === 0) {
+//           Notiflix.Notify.failure(
+//             'Sorry, there are no images matching your search query. Please try again.'
+//           );
+//           return;
+//         }
+//         Notiflix.Notify.success(`Hooray! We found ${totalHits} images.`);
+
+//         this.setState(prevState => ({
+//           images: [...prevState.images, ...hits],
+//           showBtn: page < Math.ceil(totalHits / 12),
+//         }));
+//       } catch (error) {
+//         this.setState({ isError: error.message });
+//       } finally {
+//         this.setState({ isLoading: false, isScroll: true });
+//       }
+//     }
+
+//     if (this.state.isScroll) {
+//       this.pageScroll();
+//     }
+//   }
+
+//   handleSubmit = query => {
+//     if (query === '') {
+//       Notiflix.Notify.failure('Please enter a search query.');
+//     } else if (query === this.state.query) {
+//       Notiflix.Notify.info(`${query} have already been displayed.`);
+//       return;
+//     }
+
+//     this.setState({
+//       query,
+//       page: 1,
+//       images: [],
+//       isLoading: false,
+//       isScroll: false,
+//       isError: false,
+//       showModal: false,
+//       showBtn: false,
+//     });
+//   };
+
+//   handleOpenModal = (largeImageURL, tagImage) => {
+//     this.setState({
+//       largeImageURL: largeImageURL,
+//       tagImage: tagImage,
+//       showModal: true,
+//     });
+//   };
+
+//   handleCloseModal = () => {
+//     this.setState({ showModal: false });
+//   };
+
+//   handleLoadMore = () => {
+//     this.setState(prevState => ({ page: prevState.page + 1 }));
+//   };
+
+//   pageScroll = () => {
+//     const { height: cardHeight } = document
+//       .querySelector('.ImageGallery')
+//       .firstElementChild.getBoundingClientRect();
+
+//     window.scrollBy({
+//       top: cardHeight * 3,
+//       behavior: 'smooth',
+//     });
+//   };
+
+//   render() {
+//     const {
+//       images,
+//       largeImageURL,
+//       tagImage,
+//       isLoading,
+//       isError,
+//       showModal,
+//       showBtn,
+//     } = this.state;
+
+//     return (
+//       <div className="App">
+//         <Searchbar onSubmit={this.handleSubmit} />
+//         {isError && <Error error={` ${isError}. Please try again.`} />}
+//         <ImageGallery images={images} handleOpenModal={this.handleOpenModal} />
+//         {isLoading && <Loader />}
+//         {showBtn && <Button onClick={this.handleLoadMore}></Button>}
+//         {showModal && (
+//           <Modal
+//             onClose={this.handleCloseModal}
+//             largeImageURL={largeImageURL}
+//             tagImage={tagImage}
+//           />
+//         )}
+//       </div>
+//     );
+//   }
+// }
 
 export default App;
