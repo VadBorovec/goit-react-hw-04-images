@@ -1,7 +1,11 @@
 import './Error.css';
 
 const Error = ({ error }) => {
-  return <h2>{error}</h2>;
+  return (
+    <div className="Error">
+      <h2>{error}</h2>
+    </div>
+  );
 };
 
 export default Error;
